@@ -120,8 +120,21 @@ async def list_tools() -> list[Tool]:
             name="get_pr_raising_guide",
             description="Returns guidelines for raising a Pull Request after completing "
                         "implementation work. Use this when ready to create a PR. The guide "
-                        "covers PR description structure (What/Why/How/Testing Done), linking "
+                        "covers PR description structure (What/Why/Testing Done), linking "
                         "work items, triggering buddy builds, and updating the PR with build status.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_deliverable_planning_guide",
+            description="Returns guidelines for planning a deliverable work item by breaking "
+                        "it down into tasks. Use this when you have a deliverable ID and need "
+                        "to create tasks for it. The guide covers gathering context from the "
+                        "parent epic and sibling deliverables, task decomposition rules, and "
+                        "leveraging AGENTS.md patterns.",
             inputSchema={
                 "type": "object",
                 "properties": {},
@@ -183,6 +196,21 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             return [TextContent(
                 type="text",
                 text="PR raising guide not found."
+            )]
+
+    elif name == "get_deliverable_planning_guide":
+        content = load_text_file("deliverable_planning.md")
+
+        if content:
+            full_content = context_header + content
+            return [TextContent(
+                type="text",
+                text=full_content
+            )]
+        else:
+            return [TextContent(
+                type="text",
+                text="Deliverable planning guide not found."
             )]
 
     else:
