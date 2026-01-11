@@ -115,6 +115,18 @@ async def list_tools() -> list[Tool]:
                 "properties": {},
                 "required": []
             }
+        ),
+        Tool(
+            name="get_pr_raising_guide",
+            description="Returns guidelines for raising a Pull Request after completing "
+                        "implementation work. Use this when ready to create a PR. The guide "
+                        "covers PR description structure (What/Why/How/Testing Done), linking "
+                        "work items, triggering buddy builds, and updating the PR with build status.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
         )
     ]
 
@@ -145,7 +157,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     
     elif name == "get_sprint_recap_guide":
         content = load_text_file("sprint_recap.md")
-        
+
         if content:
             full_content = context_header + content
             return [TextContent(
@@ -157,7 +169,22 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 type="text",
                 text="Sprint recap guide not found."
             )]
-    
+
+    elif name == "get_pr_raising_guide":
+        content = load_text_file("pr_raising.md")
+
+        if content:
+            full_content = context_header + content
+            return [TextContent(
+                type="text",
+                text=full_content
+            )]
+        else:
+            return [TextContent(
+                type="text",
+                text="PR raising guide not found."
+            )]
+
     else:
         return [TextContent(
             type="text",
