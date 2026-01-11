@@ -60,9 +60,6 @@ Every PR MUST include:
 ## Why
 [1-2 sentences explaining WHY this change is needed - the motivation, problem being solved, or goal being achieved]
 
-## How
-[Brief explanation of HOW the change was implemented - key technical decisions, approach taken, components modified]
-
 ## Testing Done
 [To be populated with build/test results - initially set to "[Pending build validation]"]
 ```
@@ -103,7 +100,6 @@ Include this section ONLY if there were non-trivial discussions, iterations, or 
 2. **Populate required sections:**
    - **What:** 1-2 sentences on the concrete change
    - **Why:** 1-2 sentences on motivation and problem solved
-   - **How:** Brief explanation of approach and components modified
    - **Testing Done:** Initially set to "[Pending build validation]"
 
 3. **Add Coding/Design Considerations ONLY if applicable:**
@@ -118,11 +114,6 @@ Implement retry logic for API calls in the data-fetcher service with exponential
 
 ## Why
 API calls to the upstream metrics service occasionally fail due to transient network issues, causing data gaps in dashboards. Adding retry logic improves reliability without requiring infrastructure changes.
-
-## How
-- Added `RetryHandler` class in `src/utils/retry.py` with configurable max attempts and backoff multiplier
-- Wrapped all `MetricsClient` API calls with retry handler
-- Added circuit breaker pattern to prevent cascading failures during extended outages
 
 ## Coding/Design Considerations
 - Considered using a library like `tenacity` but opted for a lightweight custom implementation to avoid adding dependencies
