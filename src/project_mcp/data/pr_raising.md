@@ -12,11 +12,11 @@ You will have context from one or more of:
 2. **Implementation Context** - Code changes made, files modified, and approaches taken during implementation
 3. **Discussion History** - Any iterations, design decisions, or trade-offs discussed during implementation
 4. **User-Provided Context** - Direct description of the feature or change from the user
+5. **Repository Context** - Use ADO MCP server to get repository details (default branch, repo ID, build pipelines)
 
-**Important:** Read the repository's `AGENTS.md` file to locate:
-- **Buddy Build URL** - The test/validation pipeline to trigger for PR validation (REQUIRED)
-- **Release Pipeline URL** - For reference only (not triggered during PR)
+**Optional:** Read the repository's `AGENTS.md` file if available for:
 - PR-specific requirements, review policies, or conventions
+- Testing requirements or coverage expectations
 
 ---
 
@@ -61,7 +61,10 @@ Every PR MUST include:
 [1-2 sentences explaining WHY this change is needed - the motivation, problem being solved, or goal being achieved]
 
 ## Testing Done
-[To be populated with build/test results - initially set to "[Pending build validation]"]
+[Populate with available testing information - include what's applicable, omit what's not]
+- Unit tests: [If tests were added, mention what was tested]
+- Local validation: [If local build/testing was done, include command snippets and key results]
+- Build validation: [Initially "Pending", will be updated with buddy build status]
 ```
 
 ### Conditional Section
@@ -82,17 +85,27 @@ Include this section ONLY if there were non-trivial discussions, iterations, or 
 
 ## PR Creation Workflow
 
-### Step 1: Read AGENTS.md and Gather Context
+### Step 1: Get Repository Details and Gather Context
 
-1. **Read the repository's `AGENTS.md`:**
-   - Locate the **Buddy Build URL** (required for build validation)
-   - Note any PR-specific requirements, review policies, or conventions
-   - Identify testing requirements or coverage expectations
+1. **Get repository details** using ADO MCP server:
+   - Fetch the repository information for the current repository
+   - Identify the **default branch** (this will be the PR base branch)
+   - Identify the **repository ID** (needed for build pipeline discovery and work item linking)
 
-2. **Gather context from available sources:**
+2. **Identify buddy build pipeline** using ADO MCP server (optional):
+   - Query available build pipelines for the project and repository
+   - Attempt to identify the buddy build by name patterns:
+     - Look for builds with names containing: "buddy", "validation", "CI", "test"
+     - Exclude builds with: "official", "release", "pr" (case-insensitive)
+   - If multiple candidates exist, prefer the one with "buddy" in the name
+   - Note the **pipeline ID** for triggering if found
+   - **If no clear buddy build is identified, proceed without it** - this is not blocking
+
+3. **Gather context from available sources:**
    - **Task Work Item:** Objective → "Why", Exit Criteria → validates "What" coverage, Parent context → broader motivation
-   - **Implementation:** Files changed → "How", Key decisions → "Coding/Design Considerations"
+   - **Implementation:** Files changed and key decisions → "Coding/Design Considerations"
    - **Discussion History:** Clarifications/iterations → "Coding/Design Considerations", Requirements → validates completeness
+   - **AGENTS.md (optional):** PR conventions, review policies, testing requirements
 
 ### Step 2: Compose PR Description
 
@@ -100,7 +113,12 @@ Include this section ONLY if there were non-trivial discussions, iterations, or 
 2. **Populate required sections:**
    - **What:** 1-2 sentences on the concrete change
    - **Why:** 1-2 sentences on motivation and problem solved
-   - **Testing Done:** Initially set to "[Pending build validation]"
+   - **Testing Done:** Include applicable items (omit if not done):
+     - Unit tests added (what scenarios were covered)
+     - Local build and testing (commands run, key output snippets)
+     - Build validation status:
+       - If buddy build was identified: "Pending"
+       - If buddy build could not be identified: "Unable to locate buddy build pipeline for this repository"
 
 3. **Add Coding/Design Considerations ONLY if applicable:**
    - Include if there were non-trivial discussions, alternatives considered, or trade-offs made
@@ -121,7 +139,13 @@ API calls to the upstream metrics service occasionally fail due to transient net
 - Circuit breaker threshold set to 5 failures based on observed P99 latency patterns
 
 ## Testing Done
-[Pending build validation]
+- Unit tests: Added tests for retry logic (success after retries, max attempts reached, circuit breaker activation)
+- Local validation:
+  ```bash
+  pytest tests/test_retry_handler.py -v
+  # All 12 tests passed
+  ```
+- Build validation: Pending
 ```
 
 ### Step 3: Create PR and Link Work Item
@@ -129,40 +153,58 @@ API calls to the upstream metrics service occasionally fail due to transient net
 1. **Create the PR** using ADO MCP server:
    - Set PR title to concise, action-oriented summary (under 72 characters)
    - Set PR description to the composed content
-   - Target the appropriate base branch (typically `main` or `master`)
+   - Set base branch to the **default branch** from Step 1
+   - Set source branch to the current working branch
 
 2. **Link the work item** using ADO MCP server:
-   - Create link between PR and originating task work item
-   - Link type: "Pull Request" association
-   - Enables traceability from work item to code change
+   - Create a link between the PR and the originating task work item
+   - Provide necessary identifiers: project, repository, PR, and work item
+   - This enables traceability from work item to code change
 
-### Step 4: Trigger Buddy Build and Update PR
+### Step 4: Trigger Buddy Build and Update PR (if buddy build was found)
+
+**Note:** Only perform this step if a buddy build pipeline was successfully identified in Step 1.
 
 1. **Trigger the buddy build** using ADO MCP server:
-   - Use the buddy build URL from `AGENTS.md`
-   - Pass the PR branch as the source branch
-   - Capture the **pipeline run URL** from the response
+   - Run the buddy build pipeline identified in Step 1
+   - Set source branch to the PR branch (source branch from Step 3)
+   - Capture the **build ID** and **pipeline run URL** from the response
 
-2. **Update the PR description** to replace "[Pending build validation]":
+2. **Update the PR description** to replace "Pending" in build validation:
+   - Edit the PR description using ADO MCP server
+   - Update the "Build validation" line in Testing Done section:
    ```markdown
    ## Testing Done
-   - Buddy build triggered: [Pipeline Run URL](url-here)
-   - Status: Running
+   - Unit tests: [Keep existing content if present]
+   - Local validation: [Keep existing content if present]
+   - Build validation: Buddy build triggered [Pipeline Run #{buildId}](pipeline-run-url) - Status: Running
    ```
+
+**If no buddy build was found:** Skip this step. The PR description already notes that the buddy build pipeline could not be located.
 
 ### Step 5: Confirm Completion
 
 Report to the user:
 - PR URL for review
 - Work item link confirmation
-- Build status and pipeline URL
+- Build status (if triggered) or note that buddy build was not found
 
-**Example:**
+**Example (with buddy build):**
 ```
 PR created successfully:
 - PR: https://dev.azure.com/org/project/_git/repo/pullrequest/1234
 - Linked to Task #5678
 - Buddy build running: https://dev.azure.com/org/project/_build/results?buildId=9999
+- Testing Done section includes: unit tests, local validation, and build status
+```
+
+**Example (without buddy build):**
+```
+PR created successfully:
+- PR: https://dev.azure.com/org/project/_git/repo/pullrequest/1234
+- Linked to Task #5678
+- Note: Could not identify buddy build pipeline for this repository
+- Testing Done section includes: unit tests and local validation
 ```
 
 ---
